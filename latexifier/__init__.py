@@ -1,1 +1,1 @@
-from .latexify import latexify, parameters, printmk
+from .latexifier import latexify, parameters, printmk
