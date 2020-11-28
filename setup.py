@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="latexify",
+    name="latexifier",
     version="1.0.0",
     author="Guillaume Garrigos",
     author_email="guillaume.garrigos@lpsm.paris",
@@ -13,7 +13,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Guillaume-Garrigos/latexify",
-    packages=['latexify', ],
+    packages=['latexifier', ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
