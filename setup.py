@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="latexifier",
-    version="1.0.1",
+    version="1.0.2",
     author="Guillaume Garrigos",
     author_email="guillaume.garrigos@lpsm.paris",
     license="MIT",
