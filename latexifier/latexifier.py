@@ -1,4 +1,5 @@
 import numpy as np
+import sympy
 import numbers
 import fractions
 from fractions import Fraction
@@ -133,9 +134,16 @@ def simple_radical_to_latex(x, **param):
             return latexb + latexc
         else: # x = a + b*sqrt(c)
             return latexa + '-' + latexbminus + latexc
+
+def number_to_latex(x, **param):
+    param = get_parameters(**param)
+    return number_to_algebraic(x, **param)[0]
+
+def simplify_number(x, **param):
+    param = get_parameters(**param)
+    return number_to_algebraic(x, **param)[1]
         
-        
-def number_to_latex(x, verbose=False, **param):
+def number_to_algebraic(x, **param):
     param = get_parameters(**param)
     approx = x
     latex = ''
@@ -143,16 +151,20 @@ def number_to_latex(x, verbose=False, **param):
         if isinstance(x, numbers.Complex):
             if isinstance(x, numbers.Real):
                 if isinstance(x, numbers.Rational):
-                    if isinstance(x, numbers.Integral): # x is an integer TRICKY : https://stackoverflow.com/questions/48458438/why-is-numpy-int32-not-recognized-as-an-int-type
+                    if isinstance(x, numbers.Integral) or isinstance(x, sympy.numbers.Integer): # x is an integer TRICKY : https://stackoverflow.com/questions/48458438/why-is-numpy-int32-not-recognized-as-an-int-type
                         latex = str(x)
                     elif isinstance(x, Fraction): # x is a Fraction
                         latex = fraction_to_latex(x, **param)
+                    elif isinstance(x, sympy.numbers.Rational): # x is a sympy Rational
+                        approx = Fraction(x.p, x.q)
+                        latex = fraction_to_latex(approx, **param)
                     else:
                         raise ValueError('You gave me a Rational which is neither integer or Fraction')
                 else: # x is complicated to deal with
-                    # maybe it is a simple fraction in disguise
+                    x = float(x) # just to prevent annoying stuff like sympy floats
+                    # maybe it is a simple fraction in disguise?
                     frac, success = real_to_fraction_maybe(x, **param)
-                    if success:
+                    if success: # yay
                         latex = fraction_to_latex(frac, **param)
                         approx = frac
                     else:
@@ -165,18 +177,16 @@ def number_to_latex(x, verbose=False, **param):
                             approx = float(latex)
                             warn("A float got rounded")
             else: # we have a complex number to deal with
-                latex_real, approx_real = number_to_latex(x.real, verbose=True, **param)
-                latex_imag, approx_imag = number_to_latex(x.imag, verbose=True, **param)
+                latex_real, approx_real = number_to_algebraic(x.real, **param)
+                latex_imag, approx_imag = number_to_algebraic(x.imag, **param)
                 latex = latex_real + ' + ' + latex_imag + ' i'
                 approx = CFraction(approx_real, approx_imag)
         else:
             raise ValueError('You gave me a number which is not a Complex')
     else:
         raise ValueError('You gave me something which is not a number')
-    if verbose:
-        return latex, approx
-    else:
-        return latex
+    
+    return latex, approx
     
 
     
@@ -189,7 +199,9 @@ def latexifier(x, **param):
     elif isinstance(x, np.ndarray):
         latex = numpyarray_to_latex(x, column=True, **param)
     elif isinstance(x, numbers.Number):
-        latex = number_to_latex(x, verbose=False, **param)
+        latex = number_to_latex(x, **param)
+    elif isinstance(x, sympy.Basic):
+        latex = sympy_polynomial_to_latex(x, **param)
     else:
         raise ValueError('Unknown data type. Can be: numbers, arrays, lists')
         
@@ -220,7 +232,37 @@ def latexify(x, verbose=False, **param):
             printmk(latex)
             
     return latex
-    
+
+
+def sympy_polynomial_to_latex(poly, **param):
+    """ In sympy there is a bunch of notions of 'polynomials'
+        E = x**2 + y**2 - 2*x*y is an 'expression' of type 'sympy.core.add.Add'
+        P = sympy.poly(E, x, y) is a 'polynomial' of type 'sympy.polys.polytools.Poly'
+            (and can be covert back with P.as_expr())
+        There is also some structures that we obtain as a derivative of polynomials
+        For instance P.factor() looks like an 'expression' but is of type 'sympy.core.mul.Mul' ...
+        So it is a mess for me, but luckily there is sympy.latex() which is able to quite nicely convert everything into latex strings
+        
+        https://stackoverflow.com/questions/62324998/construct-sympy-poly-from-coefficients-and-monomials
+    """
+    if isinstance(poly, sympy.polys.polytools.Poly):
+        # here we can do intersting stuff like replacing floats with Fractions
+        dico = poly.as_dict()
+        polyfrac = sympy.Poly.from_dict({ key : simplify_number(dico[key], **param) for key in dico.keys() }, poly.gens)
+        print([simplify_number(dico[key], **param) for key in dico.keys() ])
+        latex = sympy.latex(polyfrac.as_expr())
+    else: 
+        try: # if it is an expression we can try to convert it to a polynomial
+            proper_poly = sympy.Poly(poly)
+        except: # if it fails we just let sympy do something
+            latex = sympy.latex(poly)
+        else: # if it succeeds we latexify the polynomial
+            latex = sympy_polynomial_to_latex(proper_poly, **param)
+            
+    return latex.replace(' ','')
+
+
+
 
 def numpyarray_to_latex(a, column=True, **param):
 # taken from https://github.com/josephcslater/array_to_latex
