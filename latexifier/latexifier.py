@@ -97,14 +97,14 @@ def fraction_to_latex(x, **param):
     else:
         raise ValueError("Unknown value for the option 'style_fraction'")
         
-# this function share a lot (of issues) with a function displaying a polynomial
-# in particular with all the story of dealing with negative coefficients etc
 
 def simple_radical_to_latex(x, **param):
     return sympy.latex(x)
 
 """
 def simple_radical_to_latex(x, **param):
+# this function share a lot (of issues) with a function displaying a polynomial
+# in particular with all the story of dealing with negative coefficients etc
     " style_fraction can be 'frac', 'dfrac' or 'inline' 
         x is a triplet (a,b,c) with x = a+b*sqrt(c)
         a and b are Fraction, c is integer
