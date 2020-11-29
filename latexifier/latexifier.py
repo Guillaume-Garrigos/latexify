@@ -59,8 +59,8 @@ def real_to_fraction_x_root_maybe(x, **param):
         y = x / np.sqrt(n) # y might be a fraction now
         frac, success = real_to_fraction_maybe(y, **param)
         if success:
-            return (frac, n), True
-    return (x, 1), False
+            return frac * sympy.sqrt(n), True
+    return x, False
 
 def real_to_simple_radical_maybe(x, **param):
     # tries to convert a real to something like a+b*sqrt(n)
@@ -70,7 +70,7 @@ def real_to_simple_radical_maybe(x, **param):
     param = get_parameters(**param)
     frac, success = real_to_fraction_maybe(x, **param)
     if success:
-        return (frac, 0, 1), True
+        return frac, True
     # now we know that x = a+b*sqrt(n) with b != 0, n!=0
     # the numerator for a is in the worst case x*denominator_max
     # the numerator for b is in the worst case x*denominator_max/sqrt(n)
@@ -79,9 +79,8 @@ def real_to_simple_radical_maybe(x, **param):
         for j in range(1, param['denominator_max']+1):
             radical, success = real_to_fraction_x_root_maybe(x - Fraction(i,j), **param)
             if success:
-                return (Fraction(i,j), radical[0], radical[1]), True
-    return (x, 1, 1), False
-
+                return Fraction(i,j) + radical, True
+    return x, False
 
 
 def fraction_to_latex(x, **param):
@@ -102,10 +101,14 @@ def fraction_to_latex(x, **param):
 # in particular with all the story of dealing with negative coefficients etc
 
 def simple_radical_to_latex(x, **param):
-    """ style_fraction can be 'frac', 'dfrac' or 'inline' 
+    return sympy.latex(x)
+
+"""
+def simple_radical_to_latex(x, **param):
+    " style_fraction can be 'frac', 'dfrac' or 'inline' 
         x is a triplet (a,b,c) with x = a+b*sqrt(c)
         a and b are Fraction, c is integer
-    """
+    "
     param = get_parameters(**param)
     a = x[0]
     b = x[1]
@@ -134,6 +137,8 @@ def simple_radical_to_latex(x, **param):
             return latexb + latexc
         else: # x = a + b*sqrt(c)
             return latexa + '-' + latexbminus + latexc
+"""
+    
 
 def number_to_latex(x, **param):
     param = get_parameters(**param)
@@ -171,7 +176,8 @@ def number_to_algebraic(x, **param):
                         # maybe it is a combination of fraction and square root
                         algebraic, success = real_to_simple_radical_maybe(x, **param)
                         if success:
-                            latex = simple_radical_to_latex(algebraic, **param)    
+                            latex = simple_radical_to_latex(algebraic, **param) 
+                            approx = algebraic
                         else: # well we can just round it now              
                             latex = param['frmt'].format(x) # need to shorten useless zeros
                             approx = float(latex)
