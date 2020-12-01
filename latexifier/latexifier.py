@@ -4,6 +4,7 @@ import numbers
 import fractions
 from fractions import Fraction
 from latexifier.CFraction import CFraction
+from mpmath import pslq
 
 def printmk(*tuple_of_text):
     from IPython.display import display, Markdown
@@ -13,13 +14,15 @@ def printmk(*tuple_of_text):
 def default_parameters():
     return {
             'denominator_max' : 10, # maximal denominator allowed in fractions
-            'radical_max' : 7, # We allow for sqrt(n) to show up, with n <= radical_max
+            'root_max' : 7, # We allow for sqrt(n) to show up, with n <= radical_max
             'style_fraction' : 'frac', # how to display fractions 
             'frmt' : '{:3.6f}', # format for rounding reals when no nice approximation is found
             'newline' : False, # should the latex string contain \n newline characters?
             'arraytype' : 'pmatrix', # arrays can be converted in many latex flavours
             'list_separator' : ', ', # sparator used between elements of a list
-            'mathmode' : 'raw' # can be 'raw', 'inline' (gets in between $ $), 'equation' (gets inside a equation* environment, 'display' (gets in between \[ ... \])
+            'mathmode' : 'raw', # can be 'raw', 'inline' (gets in between $ $), 'equation' (gets inside a equation* environment, 'display' (gets in between \[ ... \])
+            'tol' : 1e-12, # tolerance when approximating floats with algebraics
+            'constants' : []
         }
 
 
@@ -62,6 +65,7 @@ def real_to_fraction_x_root_maybe(x, **param):
             return frac * sympy.sqrt(n), True
     return x, False
 
+"""
 def real_to_simple_radical_maybe(x, **param):
     # tries to convert a real to something like a+b*sqrt(n)
     # where a and b are Fractions with bounded denominator
@@ -81,6 +85,43 @@ def real_to_simple_radical_maybe(x, **param):
             if success:
                 return Fraction(i,j) + radical, True
     return x, False
+"""
+
+def nonsquare_int(int_max=11):
+    # returns a list of intergers < int_max with no square factors
+    squares = [n**2 for n in np.arange(2,np.ceil(np.sqrt(int_max)))]
+    sqdiv = []
+    for k in range(int_max+1):
+        sqdiv = sqdiv + [k*s for s in squares]
+    L = [1]
+    for n in range(2, int_max+1):
+        if n not in sqdiv:
+            L.append(n)
+    return L
+
+def real_to_simple_radical_maybe(x, **param):
+    """ Tries to turn a float into a rational combination of roots.
+    If it fails, returns directly the float with an error message.
+    It would be nice to also take into account other constants like pi?
+    """
+    param = get_parameters(**param)
+    list_roots = nonsquare_int(param['root_max'])
+    L = [np.sqrt(n) for n in list_roots]
+    L.append(x)
+    coeff = pslq(L, tol=param['tol'])
+    if coeff is None: # we found no algebraic combination
+        return x, False
+    denominator = -coeff[-1]
+    if denominator == 0: # this shouldn't happen, but who knows..
+        return x, False
+    fracs = [Fraction(c,denominator) for c in coeff[:-1]]
+    for frac in fracs:
+        if frac.denominator > param['denominator_max']:
+            return x, False
+    approx = 0
+    for k in range(len(fracs)):
+        approx = approx + fracs[k]*sympy.sqrt(list_roots[k])
+    return approx, True
 
 
 def fraction_to_latex(x, **param):
@@ -268,6 +309,9 @@ def sympy_polynomial_to_latex(poly, **param):
     return latex.replace(' ','')
 
 
+
+######################################
+# Structures
 
 
 def numpyarray_to_latex(a, column=True, **param):
