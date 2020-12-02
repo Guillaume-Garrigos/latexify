@@ -18,8 +18,19 @@ This module aims to turn python objects into latex strings. For instance:
 - All those objects can be combined and nested: list of arrays, arrays of polynomials, etc.
 
 When given integer-based values (such as Integers or Fractions), `latexify` returns a string without any ambiguity. 
-When given a float, `latexify` tries to approximate this float by means of fractions and radicals. To so, the search is limited to "small" fractions and "small" radicals. This behavior can be changed with the function `latexifier.parameters(parameter_name=parameter_value)`. Here are a few important ones:
+When given a float, `latexify` tries to approximate this float by means of fractions and radicals. To do so, the search is limited to "small" fractions and "small" radicals. What "small" means can be specified with some parameters (see below).
 
-- denominator_max (default: 10). Maximal denominator allowed in fractions
-- radical_max (defaut: 7). We allow for sqrt(n) to show up, with n <= radical_max
-- frmt (default: '{:3.6f}'). format for rounding reals when no nice approximation is found
+### Options
+
+The behavior of latexify can be changed on-the-fly by passing arguments to the function, like `latexify(0.25, parameter_name=parameter_value)`, or can be set once-for-all with the function `latexifier.parameters(parameter_name=parameter_value)`. Here are is a list of such parameters:
+
+| parameter_name | default value | purpose |
+| -------------- | :-: | ------- |
+| denominator_max | 10           | Maximal denominator allowed to appear in fractions (in absolute value) |
+| root_max | 7 | The expression can contain $sqrt(n)$ to show up, with $n$ no greater than root_max |
+| tol | 1e-12 | Any formal expression must satisfy $\vert x_{formal} - x_{float} \vert < tol$. If not, the float is rounded.  |
+| frmt | '{:3.6f}' | When no formal expression can be found, the floats will be rounded. This parameters specifies which rounding/formating rules must be applied (this is a [pythonic](https://pyformat.info/) syntax). |
+| style_fraction | 'frac'  | Sets how fraction should be displayed. Given `0.5`, the option 'frac' returns `\frac{1}{2}`. The option 'dfrac' returns `\dfrac{1}{2}`. The option 'inline' returns `1/2` (not supported when roots are involved). |
+| newline | False | Some Latex expressions usually contain newlines (for arrays for instance). By default latexify returns a string with no such newlines, but you can turn it on. | 
+| arraytype | 'pmatrix' | np.arrays can be converted in many latex flavours, of the form `\begin{arraytype} ... \end{arraytype}` |
+| mathmode | 'raw' | latexify returns by default the latex expression of a number or a matrix, etc. If you want to display it correctly in a document, this string must be placed in a math environment. You can optionally ask latexify to do it for you. With the option 'inline', the expression is returned in between `$ $`. With the option 'equation'  the expression is returned inside a `equation*` environment. With the option 'display' the expression is returned in between `\[ ... \]`. |
