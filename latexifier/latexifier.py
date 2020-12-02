@@ -65,27 +65,6 @@ def real_to_fraction_x_root_maybe(x, **param):
             return frac * sympy.sqrt(n), True
     return x, False
 
-"""
-def real_to_simple_radical_maybe(x, **param):
-    # tries to convert a real to something like a+b*sqrt(n)
-    # where a and b are Fractions with bounded denominator
-    # 'n' cannot be larger than 'radical_max'
-    # Here is a stupid implementation, surely we can do better
-    param = get_parameters(**param)
-    frac, success = real_to_fraction_maybe(x, **param)
-    if success:
-        return frac, True
-    # now we know that x = a+b*sqrt(n) with b != 0, n!=0
-    # the numerator for a is in the worst case x*denominator_max
-    # the numerator for b is in the worst case x*denominator_max/sqrt(n)
-    numerator_max = int(np.ceil(x * param['denominator_max']))
-    for i in range(-numerator_max, numerator_max+1):
-        for j in range(1, param['denominator_max']+1):
-            radical, success = real_to_fraction_x_root_maybe(x - Fraction(i,j), **param)
-            if success:
-                return Fraction(i,j) + radical, True
-    return x, False
-"""
 
 def nonsquare_int(int_max=11):
     # returns a list of intergers < int_max with no square factors
@@ -141,44 +120,6 @@ def fraction_to_latex(x, **param):
 
 def simple_radical_to_latex(x, **param):
     return sympy.latex(x)
-
-"""
-def simple_radical_to_latex(x, **param):
-# this function share a lot (of issues) with a function displaying a polynomial
-# in particular with all the story of dealing with negative coefficients etc
-    " style_fraction can be 'frac', 'dfrac' or 'inline' 
-        x is a triplet (a,b,c) with x = a+b*sqrt(c)
-        a and b are Fraction, c is integer
-    "
-    param = get_parameters(**param)
-    a = x[0]
-    b = x[1]
-    c = x[2]
-    latexa = fraction_to_latex(a, **param)
-    latexb = fraction_to_latex(b, **param)
-    latexc = '\\sqrt{' + str(c) + '}'
-    # we want to treat nicely the cases a=0, b=1, b<0, c=0, c=1
-    if c*b == 0: # x = a
-        return latexa
-    if c == 1: # x = a+b
-        return fraction_to_latex(a+b, **param)
-    if b == 1: 
-        if a == 0: # x = sqrt(c)
-            return latexc
-        else: # x = a + sqrt(c)
-            return latexa + '+' + latexc
-    elif b > 0: 
-        if a == 0: # x = b*sqrt(c)
-            return latexb + latexc
-        else: # x = a + b*sqrt(c)
-            return latexa + '+' + latexb + latexc
-    else: # b<0 we need a -sign
-        latexbminus = fraction_to_latex(-b, **param)
-        if a == 0: # x = b*sqrt(c)
-            return latexb + latexc
-        else: # x = a + b*sqrt(c)
-            return latexa + '-' + latexbminus + latexc
-"""
     
 
 def number_to_latex(x, **param):
