@@ -276,7 +276,7 @@ def numpyarray_to_latex(a, column=True, **param):
             out = out + latexifier(a[i,j], **param) + r' & '
         out = out[:-2]
         out = out + '\\\\ ' + end
-    out = out[:-5] + end + r'\end{' + param['arraytype'] + '}'
+    out = out[:-3] + end + r'\end{' + param['arraytype'] + '}'
     return out
 
 
