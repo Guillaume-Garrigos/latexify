@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="latexifier",
-    version="1.0.6",
+    version="1.0.7",
     author="Guillaume Garrigos",
     author_email="guillaume.garrigos@lpsm.paris",
     license="MIT",
@@ -23,14 +23,7 @@ setuptools.setup(
     install_requires=[
         'numpy',
         'sympy',
-        'numbers',
-        'fractions',
         'mpmath',
-        'warnings',
-        'copy',
-        'math',
-        'collections',
-        'functools',
     ],
     include_package_data=True,
 )
