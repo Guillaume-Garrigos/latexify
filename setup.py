@@ -21,6 +21,16 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
     install_requires=[
+        'numpy',
+        'sympy',
+        'numbers',
+        'fractions',
+        'mpmath',
+        'warnings',
+        'copy',
+        'math',
+        'collections',
+        'functools',
     ],
     include_package_data=True,
 )
