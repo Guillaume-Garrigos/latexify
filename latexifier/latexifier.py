@@ -3,7 +3,6 @@ import sympy
 import numbers
 import fractions
 from fractions import Fraction
-from latexifier.CFraction import CFraction
 from mpmath import pslq
 from warnings import warn
 
@@ -46,18 +45,20 @@ def parameters(**args):
 # Converting floats into Fractions
 #-------------------------------------------------------
 
-def real_to_fraction_maybe(a, verbose=False, **param):
+def real_to_fraction_maybe(a, **param):
     # convert a real to the closest rational, with bounded denominator
     # we verify that the approximation is good (controled by 'tol')
-    #   if it is not, we return the original real number
+    # if it is not, we return the original real number
+    # success is a bool telling if the approximation is faithful
     tol = param['tol']
     frac = Fraction(a).limit_denominator(param['denominator_max'])
     if np.abs(frac - a) < tol:
-        return frac, True
+        approx = frac
+        success = True
     else:
-        if verbose:
-            warn("A real number couldn't properly be converted into a Fraction. The Fraction "+str(frac)+" is a bad approximation for "+str(a)+".")
-        return a, False
+        approx = a
+        success = False
+    return approx, success
 
 def display_fraction(numerator, denominator, **param):
     # numerator and denominator here are strings
@@ -231,51 +232,78 @@ def real_to_simple_radical_maybe(x, **param):
         
         
 def number_to_algebraic(x, **param):
+    """ Input: x, typically a "number" (can mean many things)
+        Output: latex, approx
+            approx is a hopefully faithful simple equivalent formulation of x
+                could be Fraction, or sympy number, polynomial etc
+            latex is a string representing approx
+        
+        approx is required to be equal to x, up to the 'tol' parameter
+        if the approximation fails, then we just return a short decimal approximation of x
+    """
     approx = x
     latex = ''
     if isinstance(x, numbers.Number):
         if isinstance(x, numbers.Complex):
             if isinstance(x, numbers.Real):
+                
+                # FIRST : we check if x is already an algebraic structure that we can immediately recognize
                 if isinstance(x, numbers.Rational):
-                    if isinstance(x, numbers.Integral) or isinstance(x, sympy.numbers.Integer): # x is an integer TRICKY : https://stackoverflow.com/questions/48458438/why-is-numpy-int32-not-recognized-as-an-int-type
+                    if isinstance(x, numbers.Integral) or isinstance(x, sympy.numbers.Integer): 
+                        # x is an integer 
+                        # tricky : https://stackoverflow.com/questions/48458438/why-is-numpy-int32-not-recognized-as-an-int-type
                         latex = str(x)
                     elif isinstance(x, Fraction): # x is a Fraction
                         latex = fraction_to_latex(x, **param)
                     elif isinstance(x, sympy.numbers.Rational): # x is a sympy Rational
                         approx = Fraction(x.p, x.q)
                         latex = fraction_to_latex(approx, **param)
-                    else:
+                    else: # x is a Rational but not a type we recognize --> error
                         raise ValueError('You gave me a Rational which is neither integer or Fraction')
-                else: # x is complicated to deal with
+                        
+                # SECOND : x is complicated to deal with : it is not obviously an algebraic structure
+                # we will need to do approximations
+                else: 
                     x = float(x) # just to prevent annoying stuff like sympy floats
-                    
                     # maybe it is a simple fraction in disguise?
                     frac, success = real_to_fraction_maybe(x, **param)
-                    if success: # yay
+                    if success: # job is done
                         latex = fraction_to_latex(frac, **param)
                         approx = frac
-                        
-                    else: # maybe it is a product of fraction and square root?
-                        if param['numbertype'] in ['root', 'algebraic']:
-                            approx, success, latex = real_to_fraction_x_root_maybe(x, **param)
-                        
-                        if not success: # maybe it is a rational combination of many roots?
-                            if param['numbertype'] == 'algebraic':
-                                approx, success, latex = real_to_simple_algebraic_maybe(x, **param)
+                    else: # not a fraction
+                        # we will explore more complicated structures
+                        # maybe it is a product of fraction and square root?
+                        if param['numbertype'] in ['root', 'algebraic']: # do we look for complicated stuff?
+                            # we first look for a fraction times a root (that's the 'root' parameter)
+                            root, success, latex = real_to_fraction_x_root_maybe(x, **param)
+                            if success:
+                                # we already have latex
+                                approx = root
+                            else:
+                                # maybe it is a more convoluted rational combination of different roots?
+                                if param['numbertype'] == 'algebraic': # do we want to find such thing?
+                                    algebraic, success, latex = real_to_simple_algebraic_maybe(x, **param)
+                                    if success:
+                                        # we already have latex
+                                        approx = algebraic
+                        if not success: 
+                            # well there is nothing we can do except rounding it now 
+                            # we have failed to simply approximate our number x 
+                            # we convert it to a Decimal and raise a warning  
+                            latex = param['frmt'].format(x) # shorten useless zeros
+                            approx = float(latex) # same
+                            warning_text = f"The real number {x} couldn't properly be converted into a simple algebraic expression up to the specified tolerance level tol={param['tol']}. It is left approximated in decimal form : {approx}."
+                            warn(warning_text)
                             
-                        if not success: # well there is nothing we can do except rounding it now    
-                            latex = param['frmt'].format(x) # need to shorten useless zeros !
-                            approx = float(latex)
-                                
-            else: # we have a complex number to deal with
+            else: # THIRD : we have a Complex number to deal with
+                # we simply divide the work in two : real and imaginary parts
                 latex_real, approx_real = number_to_algebraic(x.real, **param)
                 latex_imag, approx_imag = number_to_algebraic(x.imag, **param)
                 latex = latex_real + ' + ' + latex_imag + ' i'
-                #approx = CFraction(approx_real, approx_imag) # not useful in the end
                 approx = complex(approx_real, approx_imag)
-        else:
+        else: # a Number which is not a Complex? Idk what it is
             raise ValueError('You gave me a number which is not a Complex')
-    else:
+    else: # not a Number (arrays, lists and stuff should be treated beforehand, see "latexifier")
         raise ValueError('You gave me something which is not a number')
     
     return latex, approx
