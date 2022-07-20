@@ -20,6 +20,7 @@ def default_parameters():
             'style_fraction' : 'frac', # how to display fractions 
             'newline' : False, # should the latex string contain \n newline characters?
             'arraytype' : 'pmatrix', # arrays can be converted in many latex flavours
+            'column' : True, # if the input is a 1D array, how should it be represented? 'True' means a column vector, 'False' means a row vector
             'list_separator' : ', ', # sparator used between elements of a list
             'mathmode' : 'raw', # can be 'raw', 'inline' (gets in between $ $), 'equation' (gets inside a equation* environment, 'display' (gets in between \[ ... \])
             'tol' : 1e-12, # tolerance when approximating floats with algebraics
@@ -323,44 +324,59 @@ def simplify_number(x, **param):
 # Functions to deal with structured data
 #-------------------------------------------------------    
 
-def numpyarray_to_latex(a, column=True, **param):
-# taken from https://github.com/josephcslater/array_to_latex
+def numpyarray_to_latex(a, **param):
+    # taken from https://github.com/josephcslater/array_to_latex
     if len(a.shape) > 2:
         raise ValueError('You gave me an array which has more than two dimensions : I cannot turn it into a latex array')
     if len(a.shape) == 1:
-        a = np.array([a])
-        if column:
-            a = a.T
-            
+        a = np.array([a]) # make it a 2D row matrix
+        if param['column']:
+            a = a.T # a 2D column matrix
+    # from now we have a 2D array    
+    
     if param['newline']:
         end = '\n'
     else:
         end = ''
         
-    out = r'\begin{' + param['arraytype'] + '} ' + end
+    approx = np.zeros_like(a) # begins the numpy array
+    latex = r'\begin{' + param['arraytype'] + '} ' + end # begins the latex array
     for i in np.arange(a.shape[0]):
         for j in np.arange(a.shape[1]):
-            out = out + latexifier(a[i,j], **param) + r' & '
-        out = out[:-2]
-        out = out + '\\\\ ' + end
-    out = out[:-3] + end + r'\end{' + param['arraytype'] + '}'
-    return out
+            latex_ij, approx_ij = latexifier(a[i,j], **param)
+            latex += latex_ij + r' & '
+            approx[i,j] = approx_ij
+        latex = latex[:-2] # delete the last ' & '
+        latex = latex + '\\\\ ' + end # ends the line
+    latex = latex[:-3]  # delete the last ' \\ '
+    latex = latex + end + r'\end{' + param['arraytype'] + '}' # ends the latex array
+    
+    return latex, approx
 
 
 def list_to_latex(L, **param):
     """ returns the elements of the list one next to each other """
+    approx = np.zeros(len(L)) # begins a numpy array
     latex = ''
-    for x in L:
-        latex = latex + latexifier(x, **param) + param['list_separator']
-    return latex[:-len(param['list_separator'])]  
+    for i in range(len(L)):
+        latex_i, approx_i = latexifier(L[i], **param)
+        latex += latex_i + param['list_separator']
+        approx[i] = approx_i
+    latex = latex[:-len(param['list_separator'])]  
+    approx = list(approx)
+    return latex, approx
 
 def tuple_to_latex(tup, **param):
     """ returns the elements of the tuple one next to each other, in the form (..,..,..) """
+    approx = np.zeros(len(tup)) # begins a numpy array
     latex = '\\left('
-    for x in tup:
-        latex = latex + latexifier(x, **param)+', '
+    for i in range(len(tup)):
+        latex_i, approx_i = latexifier(tup[i], **param)
+        latex += latex_i +', '
+        approx[i] = approx_i
     latex = latex[:-2] + ' \\right)'
-    return latex    
+    approx = tuple(approx)
+    return latex, approx
 
 def sympy_to_latex(poly, **param):
     """ Here we try to handle sympy formal expressions. We certainly miss a lot of cases.
@@ -378,18 +394,21 @@ def sympy_to_latex(poly, **param):
     """
     if isinstance(poly, sympy.polys.polytools.Poly):
         # here we can do intersting stuff like replacing floats with Fractions
-        dico = poly.as_dict()
-        polyfrac = sympy.Poly.from_dict({ key : simplify_number(dico[key], **param) for key in dico.keys() }, poly.gens)
-        latex = sympy.latex(polyfrac.as_expr())
+        dico = poly.as_dict() # a dict is easy to parse and loop over
+        approx_dico = { key : simplify_number(dico[key], **param) for key in dico.keys() } # simplify coefficients
+        approx = sympy.Poly.from_dict(approx_dico, poly.gens)
+        latex = sympy.latex(approx.as_expr())
     else: 
         try: # if it is an expression we can try to convert it to a polynomial
             proper_poly = sympy.Poly(poly)
-        except: # if it fails we just let sympy do something
-            latex = sympy.latex(poly)
-        else: # if it succeeds we latexify the polynomial
-            latex = sympy_to_latex(proper_poly, **param)
-            
-    return latex.replace(' ','')
+        except: # if the conversion failed
+            latex = sympy.latex(poly) # we just let sympy do something
+            approx = poly # we keep whatever input we had
+            warn(f" latexify received the object {poly} but I do not recognize it. I latexify it as :\n{latex}")
+        else: # if the conversion succeeded we latexify the polynomial
+            latex, approx = sympy_to_latex(proper_poly, **param)
+    latex = latex.replace(' ','') # superfluous spaces
+    return latex, approx
 
 
 
@@ -398,26 +417,24 @@ def sympy_to_latex(poly, **param):
 #-------------------------------------------------------    
     
 def latexifier(x, **param):
+    approx = None
     if isinstance(x, list):
-        latex = list_to_latex(x, **param)
+        latex, approx = list_to_latex(x, **param)
     elif isinstance(x, tuple):
-        latex = tuple_to_latex(x, **param)
+        latex, approx = tuple_to_latex(x, **param)
     elif isinstance(x, np.ndarray):
-        latex = numpyarray_to_latex(x, column=True, **param)
+        latex, approx = numpyarray_to_latex(x, **param)
     elif isinstance(x, numbers.Number):
-        latex = number_to_latex(x, **param)
+        latex, approx = number_to_algebraic(x, **param)
     elif isinstance(x, sympy.Basic):
-        latex = sympy_to_latex(x, **param)
+        latex, approx = sympy_to_latex(x, **param)
     else:
         raise ValueError('Unknown data type. Can be: numbers, arrays, lists, or basic sympy objects')
-    if param['value']:
-        return latex, approx
-    else: # default
-        return latex
+    return latex, approx
 
 def latexify(x, **param):
     param = get_parameters(**param)
-    latex = latexifier(x, **param)
+    latex, approx = latexifier(x, **param)
     
     if param['newline']:
         end = '\n'
@@ -438,5 +455,8 @@ def latexify(x, **param):
             printmk('$'+latex+'$')
         else:
             printmk(latex)
-            
-    return latex
+    
+    if param['value'] == True:
+        return latex, approx
+    else: # default
+        return latex
