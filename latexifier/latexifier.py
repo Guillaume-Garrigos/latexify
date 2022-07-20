@@ -23,7 +23,8 @@ def default_parameters():
             'list_separator' : ', ', # sparator used between elements of a list
             'mathmode' : 'raw', # can be 'raw', 'inline' (gets in between $ $), 'equation' (gets inside a equation* environment, 'display' (gets in between \[ ... \])
             'tol' : 1e-12, # tolerance when approximating floats with algebraics
-            'constants' : []
+            'constants' : [],
+            'verbose' : False # when calling latexify we can ask it to print the result. Can be 'True' (the string is printed), 'False' (nothing is printed), 'markdown' (in notebooks this interprets the latex contents of the string and renders the expression like in markdown),
         }
 
 
