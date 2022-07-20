@@ -24,7 +24,8 @@ def default_parameters():
             'mathmode' : 'raw', # can be 'raw', 'inline' (gets in between $ $), 'equation' (gets inside a equation* environment, 'display' (gets in between \[ ... \])
             'tol' : 1e-12, # tolerance when approximating floats with algebraics
             'constants' : [],
-            'verbose' : False # when calling latexify we can ask it to print the result. Can be 'True' (the string is printed), 'False' (nothing is printed), 'markdown' (in notebooks this interprets the latex contents of the string and renders the expression like in markdown),
+            'verbose' : False, # when calling latexify we can ask it to print the result. Can be 'True' (the string is printed), 'False' (nothing is printed), 'markdown' (in notebooks this interprets the latex contents of the string and renders the expression like in markdown),
+            'value' : False, # if 'True', latexify returns a second variable which is the approximation of the input 
         }
 
 
@@ -409,10 +410,12 @@ def latexifier(x, **param):
         latex = sympy_to_latex(x, **param)
     else:
         raise ValueError('Unknown data type. Can be: numbers, arrays, lists, or basic sympy objects')
-        
-    return latex
+    if param['value']:
+        return latex, approx
+    else: # default
+        return latex
 
-def latexify(x, verbose=False, **param):
+def latexify(x, **param):
     param = get_parameters(**param)
     latex = latexifier(x, **param)
     
@@ -428,9 +431,9 @@ def latexify(x, verbose=False, **param):
     elif param['mathmode'] == 'display':
         latex = '\\[ ' + end + latex + end + ' \\]'
         
-    if verbose == True:
+    if param['verbose'] == True:
         print(latex)
-    elif verbose in {'printmk', 'markdown'}:
+    elif param['verbose'] in {'printmk', 'markdown'}:
         if param['mathmode'] == 'raw':
             printmk('$'+latex+'$')
         else:
