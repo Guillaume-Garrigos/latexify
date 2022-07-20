@@ -16,7 +16,7 @@ def default_parameters():
     return {
             'numbertype' : 'rational', # can be 'root', 'algebraic'. 'algebraic' is quite expensive, 'root' is in between.
             'denominator_max' : 10, # maximal denominator allowed in fractions
-            'root_max' : 7, # We allow for sqrt(n) to show up, with n <= radical_max
+            'root_max' : 7, # We allow for sqrt(n) to show up, with n <= root_max
             'frmt' : '{:3.6f}', # format for rounding reals when no nice approximation is found
             'style_fraction' : 'frac', # how to display fractions 
             'newline' : False, # should the latex string contain \n newline characters?
